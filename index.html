@@ -5,9 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0a0f1a">
+  <meta name="theme-color" content="#0a0f1a" id="metaThemeColor">
   <meta name="description" content="香港門口巴士到站監察器，即時顯示九巴、城巴 ETA 及天氣">
   <meta name="apple-mobile-web-app-title" content="巴士到站">
+  <script>
+    (function () {
+      const p = new URLSearchParams(location.search);
+      if (p.has('kiosk') || p.get('layout') === 'kiosk') {
+        try { localStorage.setItem('hkDoorBus_kiosk', '1'); } catch (_) {}
+      }
+      if (p.has('default') || p.get('layout') === 'default') {
+        try { localStorage.removeItem('hkDoorBus_kiosk'); } catch (_) {}
+      }
+      const kiosk = p.has('kiosk') || p.get('layout') === 'kiosk'
+        || (function () { try { return localStorage.getItem('hkDoorBus_kiosk') === '1'; } catch (_) { return false; } })();
+      if (kiosk) {
+        document.documentElement.classList.add('kiosk-root');
+        const meta = document.getElementById('metaThemeColor');
+        if (meta) meta.content = '#9b1c1c';
+      }
+    })();
+  </script>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
@@ -41,10 +59,219 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     html, body { height: 100%; overscroll-behavior: none; }
     body { background: radial-gradient(ellipse at 50% 0%, #141e30 0%, #0a0f1a 55%, #060a12 100%); }
+    html.kiosk-root, html.kiosk-root body { background: #0a0a0a; }
+    html.kiosk-root .default-only { display: none !important; }
+    html:not(.kiosk-root) .kiosk-only { display: none !important; }
+
+    .kiosk-app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #111;
+      font-family: "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+      color: #fff;
+      overflow: hidden;
+    }
+    .kiosk-header {
+      background: linear-gradient(180deg, #c41e1e 0%, #9b1c1c 100%);
+      padding: 0.55rem 0.75rem 0.65rem;
+      flex-shrink: 0;
+      border-bottom: 3px solid #7f1212;
+    }
+    .kiosk-header-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.95;
+    }
+    .kiosk-header-row .kiosk-hub-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex-shrink: 0;
+    }
+    .kiosk-header-meta {
+      margin-left: auto;
+      display: flex;
+      gap: 0.5rem;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.68rem;
+    }
+    .kiosk-clock {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(2.4rem, 11vw, 3.4rem);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      margin-top: 0.15rem;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    .kiosk-status {
+      font-size: 0.62rem;
+      color: #fde68a;
+      margin-top: 0.2rem;
+      min-height: 0.85rem;
+    }
+    .kiosk-routes {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .kiosk-route {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.55rem 0.65rem;
+      border-bottom: 2px solid rgba(0,0,0,0.25);
+      min-height: 4.1rem;
+    }
+    .kiosk-route--gold { background: linear-gradient(90deg, #a67c00 0%, #8b6914 100%); }
+    .kiosk-route--red { background: linear-gradient(90deg, #8b1a1a 0%, #6b1212 100%); }
+    .kiosk-route--navy { background: linear-gradient(90deg, #1a2d5a 0%, #142347 100%); }
+    .kiosk-route--blue { background: linear-gradient(90deg, #1e3a6e 0%, #172e55 100%); }
+    .kiosk-route-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.1rem;
+      min-width: 3.2rem;
+    }
+    .kiosk-bus-svg { width: 1.6rem; height: 1.6rem; }
+    .kiosk-route-num {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(1.5rem, 7vw, 2rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .kiosk-route-mid { min-width: 0; }
+    .kiosk-route-dest {
+      font-size: clamp(0.72rem, 3.2vw, 0.88rem);
+      font-weight: 600;
+      line-height: 1.25;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.2rem;
+    }
+    .kiosk-route-dest svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; margin-top: 0.15rem; opacity: 0.8; }
+    .kiosk-route-tag {
+      font-size: 0.58rem;
+      opacity: 0.75;
+      margin-top: 0.15rem;
+      font-weight: 500;
+    }
+    .kiosk-route-right {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      flex-shrink: 0;
+    }
+    .kiosk-eta-block {
+      display: flex;
+      align-items: center;
+      gap: 0.12rem;
+    }
+    .kiosk-eta-num {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(1.6rem, 8vw, 2.2rem);
+      font-weight: 700;
+      color: #7dd3fc;
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(125, 211, 252, 0.35);
+    }
+    .kiosk-eta-clock {
+      width: 0.95rem;
+      height: 0.95rem;
+      opacity: 0.85;
+    }
+    .kiosk-eta-arriving {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fde68a;
+      text-align: right;
+      line-height: 1.2;
+      max-width: 4.5rem;
+    }
+    .kiosk-hold {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fde68a;
+      letter-spacing: 0.06em;
+    }
+    .kiosk-hold span { display: flex; align-items: center; gap: 0.15rem; }
+    .kiosk-weather {
+      background: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%);
+      padding: 0.55rem 0.75rem 0.5rem;
+      flex-shrink: 0;
+      border-top: 3px solid #1e3a8a;
+    }
+    .kiosk-weather-title {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.9;
+      margin-bottom: 0.25rem;
+    }
+    .kiosk-weather-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .kiosk-weather-temp {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(2rem, 9vw, 2.6rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .kiosk-weather-stats {
+      font-size: 0.68rem;
+      line-height: 1.45;
+      opacity: 0.95;
+    }
+    .kiosk-weather-icon { font-size: 2rem; line-height: 1; opacity: 0.9; }
+    .kiosk-weather-alert {
+      margin-top: 0.35rem;
+      font-size: 0.58rem;
+      line-height: 1.35;
+      opacity: 0.88;
+      max-height: 2.7rem;
+      overflow: hidden;
+    }
+    .kiosk-footer {
+      background: #0a1628;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.55rem;
+      color: #94a3b8;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .kiosk-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      padding: 2rem;
+      text-align: center;
+    }
     .glass { background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
     .route-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
     .route-card:hover { transform: translateY(-1px); }
@@ -60,6 +287,36 @@
 </head>
 <body class="text-slate-100 font-sans antialiased min-h-screen flex flex-col">
 
+  <!-- Kiosk: BUS Station HUB（?kiosk=1 或 layout=kiosk） -->
+  <div id="kioskApp" class="kiosk-app kiosk-only">
+    <header class="kiosk-header">
+      <div class="kiosk-header-row">
+        <svg class="kiosk-hub-icon" viewBox="0 0 24 24" fill="#fde68a" aria-hidden="true"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-2.21-1.79-4-4-4H8C5.79 2 4 3.79 4 6v10zm3-10h10v3H7V6zm0 5h10v3H7v-3z"/></svg>
+        <span>BUS Station HUB</span>
+        <div class="kiosk-header-meta">
+          <span id="kioskDate">----/--/--</span>
+          <span id="kioskDow">---</span>
+        </div>
+      </div>
+      <div id="kioskClock" class="kiosk-clock">--:-- --</div>
+      <div id="kioskStatus" class="kiosk-status"></div>
+    </header>
+    <main id="kioskRoutes" class="kiosk-routes"></main>
+    <section id="kioskWeather" class="kiosk-weather">
+      <div class="kiosk-weather-title">HKO REAL-TIME SYSTEM</div>
+      <div class="kiosk-weather-main">
+        <div>
+          <div id="kioskWeatherTemp" class="kiosk-weather-temp">-- C</div>
+          <div id="kioskWeatherStats" class="kiosk-weather-stats">Humidity: --%<br>UV Index: --</div>
+        </div>
+        <div id="kioskWeatherIcon" class="kiosk-weather-icon">☁️</div>
+      </div>
+      <div id="kioskWeatherAlert" class="kiosk-weather-alert"></div>
+    </section>
+    <footer class="kiosk-footer">hk-bus · <span id="kioskNetStatus">連線中</span> · nik-neural</footer>
+  </div>
+
+  <div id="defaultApp" class="default-only flex flex-col flex-1 min-h-screen">
   <!-- Top bar -->
   <header class="glass border-b border-slate-700/50 sticky top-0 z-50 px-4 py-3 sm:px-6">
     <div class="max-w-7xl mx-auto grid grid-cols-3 items-center gap-2 sm:gap-4">
@@ -115,6 +372,7 @@
   <footer class="px-4 py-4 text-center text-slate-500 text-xs sm:text-sm border-t border-slate-800/80">
     資料來源：運輸署 KMB/LWB (<a href="https://data.etabus.gov.hk" class="text-slate-400 underline hover:text-slate-300" target="_blank" rel="noopener">data.etabus.gov.hk</a>) · 城巴 (<a href="https://rt.data.gov.hk" class="text-slate-400 underline hover:text-slate-300" target="_blank" rel="noopener">rt.data.gov.hk</a>) · 天氣 (<a href="https://open-meteo.com" class="text-slate-400 underline hover:text-slate-300" target="_blank" rel="noopener">Open-Meteo</a>)
   </footer>
+  </div>
 
   <!-- Add / Edit stop modal -->
   <div id="modalOverlay" class="hidden fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-4">
@@ -186,6 +444,20 @@
     const ROUTES_CACHE_KEY = 'hkDoorBus_routes_v1';
     const REFRESH_MS = 45000;
     const ROUTES_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
+    const IS_KIOSK = document.documentElement.classList.contains('kiosk-root');
+
+    const KIOSK_BUS_SVG = {
+      gold: '<svg class="kiosk-bus-svg" viewBox="0 0 24 24" fill="#fde68a"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-2.21-1.79-4-4-4H8C5.79 2 4 3.79 4 6v10zm3-10h10v3H7V6zm0 5h10v3H7v-3z"/></svg>',
+      red: '<svg class="kiosk-bus-svg" viewBox="0 0 24 24" fill="#fca5a5"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-2.21-1.79-4-4-4H8C5.79 2 4 3.79 4 6v10zm3-10h10v3H7V6zm0 5h10v3H7v-3z"/></svg>',
+      blue: '<svg class="kiosk-bus-svg" viewBox="0 0 24 24" fill="#93c5fd"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-2.21-1.79-4-4-4H8C5.79 2 4 3.79 4 6v10zm3-10h10v3H7V6zm0 5h10v3H7v-3z"/></svg>',
+    };
+    const KIOSK_ETA_CLOCK = '<svg class="kiosk-eta-clock" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>';
+    const KIOSK_ARROW = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+
+    const HKO_ICONS = {
+      50: '☀️', 51: '☀️', 52: '🌤️', 53: '⛅', 54: '☁️', 60: '🌧️', 61: '🌧️',
+      62: '🌧️', 63: '🌧️', 64: '🌧️', 65: '⛈️', 70: '❄️', 80: '🌦️', 82: '⛈️', 90: '🌫️',
+    };
 
     let routeIndex = { kmb: null, citybus: null };
     let routeStopsCache = {};
@@ -598,9 +870,32 @@
       });
     }
 
+    function updateKioskClock() {
+      if (!IS_KIOSK) return;
+      const now = new Date();
+      const dateEl = document.getElementById('kioskDate');
+      const dowEl = document.getElementById('kioskDow');
+      const clockEl = document.getElementById('kioskClock');
+      if (dateEl) {
+        dateEl.textContent = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Hong_Kong' }).replace(/-/g, '/');
+      }
+      if (dowEl) {
+        dowEl.textContent = now.toLocaleDateString('en-US', { timeZone: 'Asia/Hong_Kong', weekday: 'short' }).toUpperCase();
+      }
+      if (clockEl) {
+        clockEl.textContent = now.toLocaleString('en-US', {
+          timeZone: 'Asia/Hong_Kong',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }).toUpperCase();
+      }
+    }
+
     function updateClock() {
       const el = document.getElementById('clockTime');
       if (el) el.textContent = hkNowString();
+      updateKioskClock();
     }
 
     function startClock() {
@@ -662,10 +957,57 @@
     }
 
     function renderWeather(data) {
-      document.getElementById('weatherTemp').textContent = data.temp;
-      document.getElementById('weatherFeels').textContent = `體感 ${data.feels}°C · ${data.text}`;
-      document.getElementById('weatherEmoji').textContent = data.emoji;
-      document.getElementById('weatherEmoji').title = data.text;
+      const temp = document.getElementById('weatherTemp');
+      const feels = document.getElementById('weatherFeels');
+      const emoji = document.getElementById('weatherEmoji');
+      if (temp) temp.textContent = data.temp;
+      if (feels) feels.textContent = `體感 ${data.feels}°C · ${data.text}`;
+      if (emoji) {
+        emoji.textContent = data.emoji;
+        emoji.title = data.text;
+      }
+    }
+
+    async function fetchHkoWeather() {
+      const res = await fetch('https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc');
+      if (!res.ok) throw new Error('HKO API failed');
+      const json = await res.json();
+      const temps = json.temperature?.data || [];
+      const hkoTemp = temps.find(t => t.place === '香港天文台') || temps[0];
+      const humidity = json.humidity?.data?.[0]?.value;
+      const uv = json.uvindex?.data?.[0];
+      const warnings = (json.warningMessage || []).filter(Boolean);
+      const icon = json.icon?.[0];
+      return {
+        temp: hkoTemp?.value ?? null,
+        humidity: humidity ?? null,
+        uv: uv?.value ?? null,
+        uvDesc: uv?.desc || '',
+        warnings,
+        icon,
+        emoji: HKO_ICONS[icon] || '☁️',
+        updatedAt: hkNowString(),
+      };
+    }
+
+    function renderKioskWeather(data) {
+      if (!IS_KIOSK || !data) return;
+      const tempEl = document.getElementById('kioskWeatherTemp');
+      const statsEl = document.getElementById('kioskWeatherStats');
+      const iconEl = document.getElementById('kioskWeatherIcon');
+      const alertEl = document.getElementById('kioskWeatherAlert');
+      if (tempEl) tempEl.textContent = data.temp != null ? `${data.temp} C` : '-- C';
+      if (statsEl) {
+        const hum = data.humidity != null ? `${data.humidity}%` : '--%';
+        const uv = data.uv != null ? `${data.uv}${data.uvDesc ? ` (${data.uvDesc})` : ''}` : '--';
+        statsEl.innerHTML = `Humidity: ${hum}<br>UV Index: ${uv}`;
+      }
+      if (iconEl) iconEl.textContent = data.emoji || '☁️';
+      if (alertEl) {
+        alertEl.textContent = data.warnings?.length
+          ? `Alert: ${data.warnings.join(' ')}`
+          : '';
+      }
     }
 
     // ── API: KMB ─────────────────────────────────────────────────────────────
@@ -842,7 +1184,103 @@
         </section>`;
     }
 
+    function kioskRowTheme(stop, index) {
+      if (stop.provider === 'citybus') {
+        return index % 2 === 0
+          ? { cls: 'kiosk-route--navy', bus: KIOSK_BUS_SVG.blue, tag: 'Citybus' }
+          : { cls: 'kiosk-route--blue', bus: KIOSK_BUS_SVG.blue, tag: 'Citybus' };
+      }
+      return index % 2 === 0
+        ? { cls: 'kiosk-route--gold', bus: KIOSK_BUS_SVG.gold, tag: 'KMB Cycle' }
+        : { cls: 'kiosk-route--red', bus: KIOSK_BUS_SVG.red, tag: 'KMB' };
+    }
+
+    function isKioskHold(remark, etaIso) {
+      const rmk = (remark || '').toLowerCase();
+      if (!etaIso) return true;
+      return rmk.includes('hold') || rmk.includes('暫停') || rmk.includes('受阻')
+        || rmk.includes('循環') || rmk.includes('detour') || rmk.includes('改道');
+    }
+
+    function renderKioskEtas(route) {
+      const etas = (route?.etas || []).slice(0, 2);
+      const remarks = route?.remarks || [];
+
+      if (!etas.length) {
+        return '<div class="kiosk-hold"><span>HOLD ' + KIOSK_ETA_CLOCK + '</span><span>HOLD ' + KIOSK_ETA_CLOCK + '</span></div>';
+      }
+
+      const blocks = etas.map((eta, i) => {
+        const remark = remarks[i] || '';
+        if (isKioskHold(remark, eta)) {
+          return '<span>HOLD ' + KIOSK_ETA_CLOCK + '</span>';
+        }
+        const mins = etaMinutes(eta);
+        const { text } = formatEtaDisplay(mins, remark, eta);
+        if (text === '即將到達' || text === '末班') {
+          return `<div class="kiosk-eta-arriving">${text}</div>`;
+        }
+        if (text === '—') return '<span class="kiosk-eta-num">—</span>';
+        return `<span class="kiosk-eta-num">${escapeHtml(text)}</span>${KIOSK_ETA_CLOCK}`;
+      });
+
+      const hasHoldOnly = blocks.every(b => b.includes('HOLD'));
+      if (hasHoldOnly) {
+        return `<div class="kiosk-hold">${blocks.join('')}</div>`;
+      }
+
+      const arriving = blocks.find(b => b.includes('kiosk-eta-arriving'));
+      if (arriving) return arriving;
+
+      return `<div class="kiosk-eta-block">${blocks.join('')}</div>`;
+    }
+
+    function renderKioskRouteRow(stop, data, index) {
+      const cached = cache[`stop_${stop.id}`];
+      const display = data || cached;
+      const route = display?.routes?.[0];
+      const theme = kioskRowTheme(stop, index);
+      const dest = display?.dest_tc || stop.dest_tc || '';
+      const destLabel = dest ? (dest.startsWith('往') ? dest : `往 ${dest}`) : (display?.stopName || stop.label || '');
+      const tag = (route?.remarks?.[0] || '').includes('循環') ? 'KMB Cycle' : theme.tag;
+
+      return `
+        <article class="kiosk-route ${theme.cls}">
+          <div class="kiosk-route-left">
+            ${theme.bus}
+            <span class="kiosk-route-num">${escapeHtml(stop.route)}</span>
+          </div>
+          <div class="kiosk-route-mid">
+            <div class="kiosk-route-dest">${KIOSK_ARROW}<span>${escapeHtml(destLabel)}</span></div>
+            <div class="kiosk-route-tag">${escapeHtml(tag)}</div>
+          </div>
+          <div class="kiosk-route-right">
+            ${route ? renderKioskEtas(route) : '<div class="kiosk-hold"><span>HOLD ' + KIOSK_ETA_CLOCK + '</span></div>'}
+          </div>
+        </article>`;
+    }
+
+    function renderKioskAll(stopResults = {}) {
+      if (!IS_KIOSK) return;
+      const container = document.getElementById('kioskRoutes');
+      if (!container) return;
+
+      if (!stops.length) {
+        container.innerHTML = '<div class="kiosk-empty">尚未設定巴士路線</div>';
+        return;
+      }
+
+      container.innerHTML = stops
+        .map((stop, i) => renderKioskRouteRow(stop, stopResults[stop.id], i))
+        .join('');
+    }
+
     function renderAll(stopResults = {}) {
+      if (IS_KIOSK) {
+        renderKioskAll(stopResults);
+        return;
+      }
+
       const container = document.getElementById('stopsContainer');
       const empty = document.getElementById('emptyState');
 
@@ -875,11 +1313,17 @@
 
       const loadingBar = document.getElementById('loadingBar');
       const refreshIcon = document.getElementById('refreshIcon');
-      loadingBar.classList.remove('hidden');
-      refreshIcon.classList.add('animate-spin-slow');
+      if (loadingBar) loadingBar.classList.remove('hidden');
+      if (refreshIcon) refreshIcon.classList.add('animate-spin-slow');
+      if (IS_KIOSK) {
+        const statusEl = document.getElementById('kioskStatus');
+        if (statusEl) statusEl.textContent = '更新中…';
+      }
 
       const stopResults = {};
-      const weatherPromise = fetchWeather().catch(() => cache.weather || null);
+      const weatherPromise = IS_KIOSK
+        ? fetchHkoWeather().catch(() => cache.hkoWeather || null)
+        : fetchWeather().catch(() => cache.weather || null);
 
       const stopPromises = stops.map(async (stop) => {
         const result = await fetchStopData(stop);
@@ -888,19 +1332,34 @@
 
       const [weather] = await Promise.all([weatherPromise, ...stopPromises]);
 
-      if (weather) {
-        cache.weather = weather;
-        saveCache();
-        renderWeather(weather);
-      } else if (cache.weather) {
-        renderWeather(cache.weather);
+      if (IS_KIOSK) {
+        if (weather) {
+          cache.hkoWeather = weather;
+          saveCache();
+          renderKioskWeather(weather);
+        } else if (cache.hkoWeather) {
+          renderKioskWeather(cache.hkoWeather);
+        }
+        const statusEl = document.getElementById('kioskStatus');
+        const netEl = document.getElementById('kioskNetStatus');
+        if (statusEl) statusEl.textContent = manual ? '手動更新' : '';
+        if (netEl) netEl.textContent = navigator.onLine ? '在線' : '離線';
+      } else {
+        if (weather) {
+          cache.weather = weather;
+          saveCache();
+          renderWeather(weather);
+        } else if (cache.weather) {
+          renderWeather(cache.weather);
+        }
+        const lastUpdated = document.getElementById('lastUpdated');
+        if (lastUpdated) lastUpdated.textContent = `最後更新 ${hkNowString()}（香港時間）`;
       }
 
       renderAll(stopResults);
-      document.getElementById('lastUpdated').textContent = `最後更新 ${hkNowString()}（香港時間）`;
 
-      loadingBar.classList.add('hidden');
-      refreshIcon.classList.remove('animate-spin-slow');
+      if (loadingBar) loadingBar.classList.add('hidden');
+      if (refreshIcon) refreshIcon.classList.remove('animate-spin-slow');
       isRefreshing = false;
     }
 
@@ -1065,7 +1524,12 @@
       stops = stored || DEFAULT_STOPS.map(s => ({ ...s }));
       if (!stored) saveStops();
 
-      if (cache.weather) renderWeather(cache.weather);
+      if (IS_KIOSK) {
+        if (cache.hkoWeather) renderKioskWeather(cache.hkoWeather);
+        document.title = 'BUS Station HUB';
+      } else if (cache.weather) {
+        renderWeather(cache.weather);
+      }
 
       renderAll(
         Object.fromEntries(
