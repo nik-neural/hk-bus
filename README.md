@@ -3,6 +3,7 @@
 香港門口巴士到站監察器 — 即時九巴 / 城巴 ETA，附天氣資訊。
 
 [![開啟 Web App](https://img.shields.io/badge/開啟-Web_App-f59e0b?style=for-the-badge)](https://nik-neural.github.io/hk-bus/)
+[![站牌 Kiosk 模式](https://img.shields.io/badge/站牌-Kiosk_模式-c41e1e?style=for-the-badge)](https://nik-neural.github.io/hk-bus/?kiosk=1)
 
 ## 功能
 
@@ -10,6 +11,18 @@
 - 支援九巴 / 龍運、城巴路線
 - 香港天氣 widget + 自動更新
 - 可加入主畫面，全螢幕 kiosk 模式
+- **[站牌 Kiosk 模式](https://nik-neural.github.io/hk-bus/?kiosk=1)** — 直立細屏站牌 UI（HKO 天氣、大字 ETA）
+
+## 站牌 Kiosk 模式
+
+適合 Raspberry Pi、細 TFT 屏或門口直立顯示：
+
+| 模式 | 連結 |
+|------|------|
+| 一般 UI | [nik-neural.github.io/hk-bus/](https://nik-neural.github.io/hk-bus/) |
+| **站牌 Kiosk** | [nik-neural.github.io/hk-bus/?kiosk=1](https://nik-neural.github.io/hk-bus/?kiosk=1) |
+
+開過 Kiosk 後會記住設定；返回一般 UI：`?default=1`
 
 ## 加入主畫面（PWA）
 
@@ -34,4 +47,4 @@
 
 - 九巴 / 龍運：[data.etabus.gov.hk](https://data.etabus.gov.hk)
 - 城巴：[rt.data.gov.hk](https://rt.data.gov.hk)
-- 天氣：[Open-Meteo](https://open-meteo.com)
+- 天氣（一般 UI）：[Open-Meteo](https://open-meteo.com) · Kiosk：[香港天文台](https://www.hko.gov.hk/)
