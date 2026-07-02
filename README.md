@@ -3,7 +3,7 @@
 香港門口巴士到站監察器 — 即時九巴 / 城巴 ETA，附天氣資訊。
 
 [![開啟 Web App](https://img.shields.io/badge/開啟-Web_App-f59e0b?style=for-the-badge)](https://nik-neural.github.io/hk-bus/)
-[![站牌 Kiosk 模式](https://img.shields.io/badge/站牌-Kiosk_模式-c41e1e?style=for-the-badge)](https://nik-neural.github.io/hk-bus/?kiosk=1)
+[![站牌 Kiosk 模式](https://img.shields.io/badge/站牌-Kiosk_模式-c41e1e?style=for-the-badge)](https://nik-neural.github.io/hk-bus/kiosk.html)
 
 ## 功能
 
@@ -11,7 +11,7 @@
 - 支援九巴 / 龍運、城巴路線
 - 香港天氣 widget + 自動更新
 - 可加入主畫面，全螢幕 kiosk 模式
-- **[站牌 Kiosk 模式](https://nik-neural.github.io/hk-bus/?kiosk=1)** — 直立細屏站牌 UI（HKO 天氣、大字 ETA）
+- **[站牌 Kiosk 模式](https://nik-neural.github.io/hk-bus/kiosk.html)** — 直立細屏站牌 UI（HKO 天氣、大字 ETA）
 
 ## 站牌 Kiosk 模式
 
@@ -20,9 +20,9 @@
 | 模式 | 連結 |
 |------|------|
 | 一般 UI | [nik-neural.github.io/hk-bus/](https://nik-neural.github.io/hk-bus/) |
-| **站牌 Kiosk** | [nik-neural.github.io/hk-bus/?kiosk=1](https://nik-neural.github.io/hk-bus/?kiosk=1) |
+| **站牌 Kiosk** | [nik-neural.github.io/hk-bus/kiosk.html](https://nik-neural.github.io/hk-bus/kiosk.html) |
 
-站牌模式要用上方 Kiosk 連結開；Raspberry Pi 請 bookmark `?kiosk=1` 嗰條 URL
+一般版同 Kiosk 係分開入口；Raspberry Pi 請 bookmark `kiosk.html`
 
 ## 加入主畫面（PWA）
 

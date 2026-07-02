@@ -2,6 +2,9 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10,17 +13,16 @@
   <meta name="apple-mobile-web-app-title" content="巴士到站">
   <script>
     (function () {
-      const p = new URLSearchParams(location.search);
-      const kiosk = p.has('kiosk') || p.get('layout') === 'kiosk';
-      // 只喺 URL 帶 kiosk 參數時先進入站牌模式；順便清走舊版殘留設定
-      if (!kiosk) {
-        try { localStorage.removeItem('hkDoorBus_kiosk'); } catch (_) {}
+      function wantsKiosk() {
+        const p = new URLSearchParams(location.search);
+        return p.get('kiosk') === '1' || p.get('layout') === 'kiosk';
       }
-      if (kiosk) {
-        document.documentElement.classList.add('kiosk-root');
-        const meta = document.getElementById('metaThemeColor');
-        if (meta) meta.content = '#9b1c1c';
-      }
+      try { localStorage.removeItem('hkDoorBus_kiosk'); } catch (_) {}
+      const kiosk = wantsKiosk();
+      const root = document.documentElement;
+      root.classList.toggle('kiosk-root', kiosk);
+      const meta = document.getElementById('metaThemeColor');
+      if (meta) meta.content = kiosk ? '#9b1c1c' : '#0a0f1a';
     })();
   </script>
   <link rel="manifest" href="manifest.json">
@@ -441,7 +443,12 @@
     const ROUTES_CACHE_KEY = 'hkDoorBus_routes_v1';
     const REFRESH_MS = 45000;
     const ROUTES_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
-    const IS_KIOSK = document.documentElement.classList.contains('kiosk-root');
+    function isKioskMode() {
+      const p = new URLSearchParams(location.search);
+      const want = p.get('kiosk') === '1' || p.get('layout') === 'kiosk';
+      document.documentElement.classList.toggle('kiosk-root', want);
+      return want;
+    }
 
     const KIOSK_BUS_SVG = {
       gold: '<svg class="kiosk-bus-svg" viewBox="0 0 24 24" fill="#fde68a"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 001 1h1a1 1 0 001-1v-1h8v1a1 1 0 001 1h1a1 1 0 001-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-2.21-1.79-4-4-4H8C5.79 2 4 3.79 4 6v10zm3-10h10v3H7V6zm0 5h10v3H7v-3z"/></svg>',
@@ -868,7 +875,7 @@
     }
 
     function updateKioskClock() {
-      if (!IS_KIOSK) return;
+      if (!isKioskMode()) return;
       const now = new Date();
       const dateEl = document.getElementById('kioskDate');
       const dowEl = document.getElementById('kioskDow');
@@ -988,7 +995,7 @@
     }
 
     function renderKioskWeather(data) {
-      if (!IS_KIOSK || !data) return;
+      if (!isKioskMode() || !data) return;
       const tempEl = document.getElementById('kioskWeatherTemp');
       const statsEl = document.getElementById('kioskWeatherStats');
       const iconEl = document.getElementById('kioskWeatherIcon');
@@ -1258,7 +1265,7 @@
     }
 
     function renderKioskAll(stopResults = {}) {
-      if (!IS_KIOSK) return;
+      if (!isKioskMode()) return;
       const container = document.getElementById('kioskRoutes');
       if (!container) return;
 
@@ -1273,7 +1280,7 @@
     }
 
     function renderAll(stopResults = {}) {
-      if (IS_KIOSK) {
+      if (isKioskMode()) {
         renderKioskAll(stopResults);
         return;
       }
@@ -1312,13 +1319,13 @@
       const refreshIcon = document.getElementById('refreshIcon');
       if (loadingBar) loadingBar.classList.remove('hidden');
       if (refreshIcon) refreshIcon.classList.add('animate-spin-slow');
-      if (IS_KIOSK) {
+      if (isKioskMode()) {
         const statusEl = document.getElementById('kioskStatus');
         if (statusEl) statusEl.textContent = '更新中…';
       }
 
       const stopResults = {};
-      const weatherPromise = IS_KIOSK
+      const weatherPromise = isKioskMode()
         ? fetchHkoWeather().catch(() => cache.hkoWeather || null)
         : fetchWeather().catch(() => cache.weather || null);
 
@@ -1329,7 +1336,7 @@
 
       const [weather] = await Promise.all([weatherPromise, ...stopPromises]);
 
-      if (IS_KIOSK) {
+      if (isKioskMode()) {
         if (weather) {
           cache.hkoWeather = weather;
           saveCache();
@@ -1521,7 +1528,7 @@
       stops = stored || DEFAULT_STOPS.map(s => ({ ...s }));
       if (!stored) saveStops();
 
-      if (IS_KIOSK) {
+      if (isKioskMode()) {
         if (cache.hkoWeather) renderKioskWeather(cache.hkoWeather);
         document.title = 'BUS Station HUB';
       } else if (cache.weather) {
